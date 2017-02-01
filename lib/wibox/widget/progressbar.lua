@@ -23,6 +23,7 @@
 local setmetatable = setmetatable
 local ipairs = ipairs
 local math = math
+local pi = math.pi
 local util =  require("awful.util")
 local base = require("wibox.widget.base")
 local color = require("gears.color")
@@ -80,8 +81,8 @@ local progressbar = { mt = {} }
 -- @see gears.shape
 
 --- Set the progressbar to draw vertically.
--- This doesn't do anything anymore, use a `wibox.container.rotate` widget.
--- @deprecated set_vertical
+-- 
+-- @property vertical
 -- @tparam boolean vertical
 
 --- Force the inner part (the bar) to fit in the background shape.
@@ -192,7 +193,7 @@ local properties = { "border_color", "color"     , "background_color",
                      "ticks_gap"   , "ticks_size", "border_width",
                      "shape"       , "bar_shape" , "bar_border_width",
                      "clip"        , "margins"   , "bar_border_color",
-                     "paddings",
+                     "paddings"    , "vertical",
                    }
 
 function progressbar.draw(pbar, _, cr, width, height)
@@ -313,7 +314,7 @@ function progressbar.draw(pbar, _, cr, width, height)
     over_drawn_height = math.max(over_drawn_height, 0)
 
     local rel_x = over_drawn_width * value
-
+    local rel_y = over_drawn_height * value
 
     -- Draw the progressbar shape
 
@@ -333,7 +334,13 @@ function progressbar.draw(pbar, _, cr, width, height)
     over_drawn_height = over_drawn_height - bar_border_width
     cr:translate(bar_border_width/2, bar_border_width/2)
 
-    bar_shape(cr, rel_x, over_drawn_height)
+    if pbar._private.vertical then
+        cr:rotate(pi)
+        cr:translate(-over_drawn_width, -over_drawn_height)
+        bar_shape(cr, over_drawn_width, rel_y)
+    else
+        bar_shape(cr, rel_x, over_drawn_height)
+    end
 
     cr:set_source(color(pbar._private.color or beautiful.progressbar_fg or "#ff0000"))
 
@@ -415,10 +422,6 @@ for _, prop in ipairs(properties) do
     end
 end
 
-function progressbar:set_vertical(value) --luacheck: no unused_args
-    util.deprecate("Use a `wibox.container.rotate` widget")
-end
-
 
 --- Create a progressbar widget.
 -- @param args Standard widget() arguments. You should add width and height
@@ -436,6 +439,7 @@ function progressbar.new(args)
     pbar._private.height    = args.height or 20
     pbar._private.value     = 0
     pbar._private.max_value = 1
+    pbar._private.vertical  = false
 
     util.table.crush(pbar, progressbar, true)
 
